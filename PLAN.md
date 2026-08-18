@@ -1,7 +1,8 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Plan approved, implementation not yet started (repo still has only the
-placeholder `CMakeLists.txt` / `src/main.c` hello-world). Start at Phase 0.
+**Status:** Phase 0 (scaffolding & dependencies) complete. Module layout is in place,
+libcsv/linenoise are vendored, cJSON is wired via FetchContent, and `csvdb_core` +
+`csvdb` build cleanly with a working smoke test. Start at Phase 1.
 
 ## Context
 
