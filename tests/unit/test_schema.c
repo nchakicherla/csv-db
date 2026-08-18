@@ -4,14 +4,8 @@
 
 #include "schema.h"
 
-static const char *fixture_path(const char *name) {
-    static char path[1024];
-    snprintf(path, sizeof(path), "%s/schema/%s", FIXTURES_DIR, name);
-    return path;
-}
-
 static Schema *parse_fixture(const char *name, char *errbuf, size_t errlen) {
-    char *text = read_file_to_string(fixture_path(name));
+    char *text = read_file_to_string(fixture_path("schema", name));
     if (text == NULL) {
         snprintf(errbuf, errlen, "could not read fixture %s", name);
         return NULL;

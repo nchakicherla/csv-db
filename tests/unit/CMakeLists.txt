@@ -11,3 +11,4 @@ endfunction()
 
 csvdb_add_unit_test(test_value)
 csvdb_add_unit_test(test_schema)
+csvdb_add_unit_test(test_storage)

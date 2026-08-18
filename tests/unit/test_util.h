@@ -28,6 +28,15 @@ static int test_failures = 0;
 
 #define TEST_MAIN_RETURN() (test_failures != 0 ? 1 : 0)
 
+/* Builds "<FIXTURES_DIR>/<subdir>/<name>". FIXTURES_DIR is supplied as a
+ * compile definition by tests/unit/CMakeLists.txt. Result is only valid
+ * until the next call (single shared static buffer). */
+static inline const char *fixture_path(const char *subdir, const char *name) {
+    static char path[1024];
+    snprintf(path, sizeof(path), "%s/%s/%s", FIXTURES_DIR, subdir, name);
+    return path;
+}
+
 /* Reads a fixture file whole. Caller frees. Returns NULL on any I/O error. */
 static inline char *read_file_to_string(const char *path) {
     FILE *f = fopen(path, "rb");

@@ -1,7 +1,10 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 1 (value system & schema) complete. `value.{c,h}` and `schema.{c,h}`
-are implemented and unit-tested (11 fixtures, `ctest` green). Start at Phase 2.
+**Status:** Phase 2 (storage engine) complete. `storage.{c,h}` loads/writes tables via
+libcsv (whole-file-in-memory, atomic `.tmp`+`fsync`+`rename`, always-quoted non-NULL
+fields, bare-empty-field NULLs) and is unit-tested (round trip, quoting edge cases,
+NULL round trip, malformed-input errors; `ctest` green, also clean under ASan/UBSan).
+Start at Phase 3.
 
 ## Context
 
