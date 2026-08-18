@@ -1,11 +1,12 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 3 (catalog & locking) complete. `lock.{c,h}` wraps blocking
-shared/exclusive `flock()`; `catalog.{c,h}` opens a database directory, discovers
-tables, creates/drops them atomically, and wraps `storage_load`/`storage_write` in
-locks (plus a sorted-order, dedup'd multi-table lock helper for future JOINs).
-Path-traversal defense-in-depth and a forked-child lock-contention test both pass;
-`ctest` green, also clean under ASan/UBSan. Start at Phase 4.
+**Status:** Phase 4 (SQL lexer & parser) complete. `lexer.{c,h}` tokenizes the full
+grammar with line/column tracking; `ast.h` defines the statement/expression node
+types (CREATE TABLE reuses `Schema` directly); `parser.{c,h}` is a recursive-descent
+parser for all 6 statement types plus OR/AND/NOT/comparison expression precedence,
+rejecting malformed and path-like identifiers by construction (the lexer can't even
+tokenize a `/`). Table-driven tests cover every statement type, structural AST shape,
+and precedence; `ctest` green, also clean under ASan/UBSan. Start at Phase 5.
 
 ## Context
 

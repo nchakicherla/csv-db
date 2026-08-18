@@ -237,6 +237,27 @@ int schema_find_column(const Schema *schema, const char *name) {
     return -1;
 }
 
+bool schema_append_column(Schema *schema, char *name, ValueType type, bool nullable,
+                           bool primary_key, bool has_foreign_key,
+                           char *fk_table, char *fk_column) {
+    Column *grown = realloc(schema->columns, (schema->column_count + 1) * sizeof(Column));
+    if (grown == NULL) {
+        return false;
+    }
+    schema->columns = grown;
+
+    Column *col = &schema->columns[schema->column_count];
+    col->name = name;
+    col->type = type;
+    col->nullable = nullable;
+    col->primary_key = primary_key;
+    col->has_foreign_key = has_foreign_key;
+    col->foreign_key.table = fk_table;
+    col->foreign_key.column = fk_column;
+    schema->column_count++;
+    return true;
+}
+
 void schema_free(Schema *schema) {
     if (schema == NULL) {
         return;

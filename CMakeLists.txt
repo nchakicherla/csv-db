@@ -35,6 +35,8 @@ add_library(csvdb_core STATIC
     src/lib/storage.c
     src/lib/lock.c
     src/lib/catalog.c
+    src/lib/lexer.c
+    src/lib/parser.c
 )
 target_include_directories(csvdb_core PUBLIC include)
 # cJSON's own CMakeLists doesn't export its include dir via the target (it

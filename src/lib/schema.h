@@ -52,6 +52,17 @@ char *schema_to_json_string(const Schema *schema);
 /* Index of the column named `name` in `schema`, or -1 if not found. */
 int schema_find_column(const Schema *schema, const char *name);
 
+/* Appends one column to `schema`, growing its columns array by one. On
+ * success, `name`, `fk_table`, and `fk_column` (the latter two only used
+ * when has_foreign_key is true) are owned by `schema` from then on. On
+ * failure (out of memory), ownership is not transferred -- the caller
+ * still owns and must free them. Intended for building a Schema
+ * incrementally (e.g. the CREATE TABLE parser), one column at a time,
+ * where schema_free stays correct no matter how far construction got. */
+bool schema_append_column(Schema *schema, char *name, ValueType type, bool nullable,
+                           bool primary_key, bool has_foreign_key,
+                           char *fk_table, char *fk_column);
+
 void schema_free(Schema *schema);
 
 #endif /* CSVDB_SCHEMA_H */
