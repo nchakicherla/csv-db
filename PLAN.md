@@ -1,10 +1,11 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 2 (storage engine) complete. `storage.{c,h}` loads/writes tables via
-libcsv (whole-file-in-memory, atomic `.tmp`+`fsync`+`rename`, always-quoted non-NULL
-fields, bare-empty-field NULLs) and is unit-tested (round trip, quoting edge cases,
-NULL round trip, malformed-input errors; `ctest` green, also clean under ASan/UBSan).
-Start at Phase 3.
+**Status:** Phase 3 (catalog & locking) complete. `lock.{c,h}` wraps blocking
+shared/exclusive `flock()`; `catalog.{c,h}` opens a database directory, discovers
+tables, creates/drops them atomically, and wraps `storage_load`/`storage_write` in
+locks (plus a sorted-order, dedup'd multi-table lock helper for future JOINs).
+Path-traversal defense-in-depth and a forked-child lock-contention test both pass;
+`ctest` green, also clean under ASan/UBSan. Start at Phase 4.
 
 ## Context
 
