@@ -79,10 +79,21 @@ v1 types: `INTEGER`, `REAL`, `TEXT`, `BOOLEAN` (extensible later, e.g. `DATE`).
 `users.csv` has a header row matching the schema's column order; libcsv does the actual
 field-level parsing/escaping, the schema layer does type coercion and validation.
 
+**NULL representation:** a NULL value is written as a completely empty CSV field (no
+quotes, no literal `NULL` token). On read, an empty field is always interpreted as NULL —
+this means an empty `TEXT` string (`""`) is indistinguishable from NULL in v1. That's a
+known, documented limitation rather than something to solve now.
+
 **Write safety:** writes (INSERT/UPDATE/DELETE/CREATE/DROP) go to `<table>.csv.tmp`, then
 `fsync` + `rename()` over the original — atomic on POSIX, avoids partial-write corruption.
 Reads take a shared `flock()` on `<table>.csv.lock`; writes take an exclusive lock. This is
-advisory locking for safety between processes, not MVCC/transactions.
+advisory locking for safety between processes, not MVCC/transactions. Statements that touch
+more than one table (JOINs, FK-checking INSERTs) acquire all needed locks in a fixed order —
+sorted by table name — so two statements that lock the same tables can't deadlock by taking
+them in opposite order.
+
+**Limitation:** `flock()` is advisory and not reliable over NFS or other network
+filesystems; this design assumes a local (or otherwise POSIX-flock-correct) filesystem.
 
 ## SQL subset (v1)
 
@@ -100,6 +111,20 @@ DELETE FROM <table> [ WHERE <cond> ]
 ```
 Expressions: literals, `col` / `table.col` refs, `= != < <= > >=`, `AND OR NOT`, `LIKE`,
 parentheses. No arithmetic/aggregates in v1 (noted as a clean future extension point).
+
+**Identifiers:** table and column names must match `[A-Za-z_][A-Za-z0-9_]*` — the parser
+rejects anything else at parse time. This isn't just a style rule: table names are used
+directly to build filesystem paths (`<name>.csv`, `<name>.schema.json`), so `catalog.c`
+also re-validates on the way in (defense in depth, not trusting the parser alone) and
+rejects any name containing `/` or `..` before it touches a path.
+
+**Comparison semantics:** `INTEGER` and `REAL` compare with implicit numeric promotion
+(an `INTEGER` operand is promoted to `REAL` when compared against a `REAL`); `TEXT` and
+`BOOLEAN` only compare against their own type. Comparing incompatible types (e.g.
+`TEXT = INTEGER`) is a runtime error, not a silent cast — this keeps `value.c`'s
+comparison logic small and avoids SQLite-style type-affinity surprises. Per standard
+three-valued SQL logic, any comparison involving NULL evaluates to NULL (treated as
+not-matching in `WHERE`/`ON` filters), never `TRUE` or `FALSE`.
 
 Execution model: **whole-table-in-memory** per query (read full CSV into a `RowSet`, no
 streaming/indexing). This is the right complexity trade-off for CSV-scale data and keeps
@@ -178,7 +203,9 @@ FetchContent; define CMake targets (`csvdb` static lib, `csvdb` executable); smo
 that everything links and the binary runs.
 
 **Phase 1 — Value system & schema (cJSON)**
-`value.{c,h}`: typed `Value` (NULL/INT/REAL/TEXT/BOOL), comparisons, stringification.
+`value.{c,h}`: typed `Value` (NULL/INT/REAL/TEXT/BOOL), comparisons (numeric
+INTEGER/REAL promotion, cross-type errors, NULL per three-valued logic — see
+Comparison semantics above), stringification.
 `schema.{c,h}`: parse `<table>.schema.json` into a `Schema` struct via cJSON, validate
 (duplicate columns, known types), serialize a `Schema` back to JSON for `CREATE TABLE`.
 Unit tests: valid/invalid schema fixtures, parse/serialize round-trip.
@@ -189,20 +216,29 @@ streaming callbacks, with schema-driven type coercion (reject bad values with a 
 error); write a `RowSet` back out via libcsv's writer with correct quoting; atomic
 `.tmp` + `rename()` write path. No locking yet — correctness first.
 Unit tests: write known rows, read back, assert equality; quoting edge cases (commas,
-quotes, embedded newlines).
+quotes, embedded newlines); NULL round-trip (empty field <-> NULL, including the
+empty-string-vs-NULL caveat from the on-disk format section).
 
 **Phase 3 — Catalog & locking**
 `catalog.{c,h}`: open a database directory, discover tables (scan `*.schema.json`),
-lazy-load/cache schemas, create/drop table (writes schema.json + header-only CSV).
+lazy-load/cache schemas, create/drop table (writes schema.json + header-only CSV);
+re-validates table names against the identifier rule and rejects `/`/`..` before
+building any path, as defense in depth alongside the parser-level check.
 `lock.{c,h}`: flock()-based shared/exclusive acquire+release, wired into storage's
-read/write entry points from here on.
-Test: a forked-child contention test proving a writer excludes readers/other writers.
+read/write entry points from here on; multi-table statements acquire locks in a fixed
+(sorted-by-name) order to avoid cross-statement deadlocks. Advisory-only — document the
+NFS caveat here too.
+Test: a forked-child contention test proving a writer excludes readers/other writers;
+a path-traversal test asserting a malicious table name never escapes the db directory.
 
 **Phase 4 — SQL lexer & parser**
 `lexer.{c,h}`, `ast.h`, `parser.{c,h}`: tokenizer + recursive-descent parser for all
-statement types in the grammar above, with line/column error reporting.
+statement types in the grammar above, with line/column error reporting; rejects
+table/column identifiers that don't match `[A-Za-z_][A-Za-z0-9_]*` (see Identifiers
+above).
 Unit tests: table-driven — one SQL string in, expected AST shape (or expected parse
-error) out, covering every statement type and common malformed input.
+error) out, covering every statement type and common malformed input, including
+malformed/path-like identifiers.
 
 **Phase 5 — Query executor**
 `expr_eval.{c,h}`: evaluate WHERE/ON expressions against a row context (handles
