@@ -1,0 +1,6 @@
+{
+  "name": "things",
+  "columns": [
+    {"name": "id", "type": "INTEGER"}
+  ]
+}

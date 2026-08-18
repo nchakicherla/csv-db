@@ -30,8 +30,14 @@ target_include_directories(linenoise_vendor PUBLIC third_party/linenoise)
 # --- libcsvdb core library ---
 add_library(csvdb_core STATIC
     src/lib/csvdb.c
+    src/lib/value.c
+    src/lib/schema.c
 )
 target_include_directories(csvdb_core PUBLIC include)
+# cJSON's own CMakeLists doesn't export its include dir via the target (it
+# relies on `install()` for that), so add it directly for FetchContent's
+# build-tree usage.
+target_include_directories(csvdb_core PRIVATE ${cjson_SOURCE_DIR})
 target_link_libraries(csvdb_core PUBLIC libcsv_vendor cjson)
 target_compile_options(csvdb_core PRIVATE -Wall -Wextra -Werror)
 
@@ -41,3 +47,6 @@ add_executable(csvdb
 )
 target_link_libraries(csvdb PRIVATE csvdb_core linenoise_vendor)
 target_compile_options(csvdb PRIVATE -Wall -Wextra -Werror)
+
+enable_testing()
+add_subdirectory(tests)

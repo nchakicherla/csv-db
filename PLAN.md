@@ -1,8 +1,7 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 0 (scaffolding & dependencies) complete. Module layout is in place,
-libcsv/linenoise are vendored, cJSON is wired via FetchContent, and `csvdb_core` +
-`csvdb` build cleanly with a working smoke test. Start at Phase 1.
+**Status:** Phase 1 (value system & schema) complete. `value.{c,h}` and `schema.{c,h}`
+are implemented and unit-tested (11 fixtures, `ctest` green). Start at Phase 2.
 
 ## Context
 

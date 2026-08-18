@@ -1,0 +1,7 @@
+{
+  "name": "departments",
+  "columns": [
+    {"name": "id",    "type": "INTEGER", "nullable": false, "primary_key": true},
+    {"name": "label", "type": "TEXT",    "nullable": true}
+  ]
+}

@@ -1,0 +1,8 @@
+{
+  "name": "widgets",
+  "columns": [
+    {"name": "id",      "type": "INTEGER", "nullable": false, "primary_key": true},
+    {"name": "dept_id", "type": "INTEGER", "nullable": true,
+     "foreign_key": {"table": "departments"}}
+  ]
+}

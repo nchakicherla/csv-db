@@ -1,0 +1,10 @@
+{
+  "name": "users",
+  "columns": [
+    {"name": "id",      "type": "INTEGER", "nullable": false, "primary_key": true},
+    {"name": "name",    "type": "TEXT",    "nullable": false},
+    {"name": "age",     "type": "INTEGER", "nullable": true},
+    {"name": "dept_id", "type": "INTEGER", "nullable": true,
+     "foreign_key": {"table": "departments", "column": "id"}}
+  ]
+}
