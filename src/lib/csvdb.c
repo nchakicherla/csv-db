@@ -2,12 +2,14 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 #include "ast.h"
 #include "catalog.h"
 #include "executor.h"
 #include "parser.h"
 #include "result.h"
+#include "schema.h"
 #include "value.h"
 
 struct csvdb {
@@ -150,6 +152,66 @@ csvdb_value csvdb_result_get(const csvdb_result *result, size_t row, size_t col)
     case VALUE_BOOLEAN: out.as.boolean = v->as.boolean; break;
     }
     return out;
+}
+
+size_t csvdb_table_count(csvdb *db) {
+    return catalog_table_count(&db->catalog);
+}
+
+const char *csvdb_table_name_at(csvdb *db, size_t index) {
+    return catalog_table_name_at(&db->catalog, index);
+}
+
+static void append_str(char **buf, size_t *len, size_t *cap, const char *s) {
+    size_t n = strlen(s);
+    if (*len + n + 1 > *cap) {
+        size_t new_cap = (*cap == 0) ? 256 : *cap * 2;
+        while (new_cap < *len + n + 1) {
+            new_cap *= 2;
+        }
+        *buf = realloc(*buf, new_cap);
+        *cap = new_cap;
+    }
+    memcpy(*buf + *len, s, n + 1); /* copies the NUL too */
+    *len += n;
+}
+
+char *csvdb_table_schema_string(csvdb *db, const char *table_name) {
+    if (db == NULL || table_name == NULL) {
+        return NULL;
+    }
+    const Schema *schema = catalog_get_schema(&db->catalog, table_name, db->errmsg, sizeof(db->errmsg));
+    if (schema == NULL) {
+        return NULL;
+    }
+
+    char *buf = NULL;
+    size_t len = 0;
+    size_t cap = 0;
+    char line[256];
+
+    snprintf(line, sizeof(line), "%s (\n", schema->name);
+    append_str(&buf, &len, &cap, line);
+
+    for (size_t i = 0; i < schema->column_count; i++) {
+        const Column *col = &schema->columns[i];
+        int n = snprintf(line, sizeof(line), "  %s %s", col->name, schema_type_to_name(col->type));
+        if (!col->nullable) {
+            n += snprintf(line + n, sizeof(line) - (size_t)n, " NOT NULL");
+        }
+        if (col->primary_key) {
+            n += snprintf(line + n, sizeof(line) - (size_t)n, " PRIMARY KEY");
+        }
+        if (col->has_foreign_key) {
+            n += snprintf(line + n, sizeof(line) - (size_t)n, " REFERENCES %s(%s)",
+                           col->foreign_key.table, col->foreign_key.column);
+        }
+        snprintf(line + n, sizeof(line) - (size_t)n, "%s\n", i + 1 < schema->column_count ? "," : "");
+        append_str(&buf, &len, &cap, line);
+    }
+
+    append_str(&buf, &len, &cap, ")\n");
+    return buf;
 }
 
 const char *csvdb_version(void) {

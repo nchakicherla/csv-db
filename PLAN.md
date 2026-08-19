@@ -1,15 +1,31 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 6 (public library API) complete. `include/csvdb/csvdb.h` is finalized
-with real doc comments: opaque `csvdb`/`csvdb_result` handles, `csvdb_open/close`,
-`csvdb_exec` (one statement at a time, `CSVDB_OK`/`CSVDB_ERROR`/`CSVDB_MISUSE` +
-`csvdb_errmsg`), result iteration (`row_count`/`col_count`/`col_name`/`col_type`/`get`
-returning a small tagged `csvdb_value`), and `csvdb_version`. `src/lib/csvdb.c` wraps
-the internal Catalog/Statement/Result machinery behind it with no internal types
-leaking across the boundary. A new integration test drives full CRUD through the
-public header alone (`#include "csvdb/csvdb.h"` only, no internal headers); `ctest`
-green, also clean under ASan/UBSan. `cli/main.c` is left as Phase 0's smoke test --
-real CLI argument handling is Phase 7's job, not this one. Start at Phase 7.
+**Status:** All nine phases complete. Phases 7-9 landed together:
+
+- **Phase 7 (CLI):** `cli/main.c` (`-d/--db`, `-c/--command`, a script-file positional
+  arg, `--format table|csv|json`, `-h/--help`, exit codes 0/1/2) + `cli/format.{c,h}`
+  (table/csv/json rendering; csv reuses libcsv's writer matching the on-disk quoting
+  convention, json reuses cJSON). Errors to stderr, results to stdout.
+- **Phase 8 (REPL):** `repl/repl.{c,h}` -- linenoise-backed prompt (`csvdb> ` /
+  `...> ` continuation until a top-level `;`), persistent `~/.csvdb_history`,
+  meta-commands (`.tables`, `.schema <t>`, `.help`, `.exit`/`.quit`), and Ctrl-C
+  cancelling in-progress input rather than exiting. `csvdb.h` gained
+  `csvdb_table_count`/`csvdb_table_name_at`/`csvdb_table_schema_string` so the REPL
+  never reaches past the public API. `docs/repl-manual-test-checklist.md` covers what
+  can't be automated; a real bug (a trailing newline left in the input buffer after
+  each statement, silently swallowing the next meta-command) was caught by manual
+  testing and fixed.
+- **Phase 9 (hardening, docs, packaging):** `tests/integration/test_hardening.c` adds
+  a forked 4-process concurrent-INSERT stress test (60 rows, no loss/duplication --
+  proves the locking model holds under real contention), malformed-CSV recovery
+  through the full stack, INTEGER->REAL promotion, and executor-level column-count
+  validation. `docs/`: `schema-format.md`, `sql-grammar.md` (EBNF), `library-api.md`
+  (a worked example, compiled and run to confirm it's accurate). CMake `install()`
+  rules (with cJSON's own excluded via `EXCLUDE_FROM_ALL`, since it doesn't respect a
+  custom prefix) and `.github/workflows/ci.yml` running `ctest` on Ubuntu + macOS.
+
+`ctest` green (10 suites), clean under ASan/UBSan, verified via a from-scratch clean
+build + `cmake --install`.
 
 ## Context
 

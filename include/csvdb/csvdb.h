@@ -141,6 +141,20 @@ csvdb_type csvdb_result_col_type(const csvdb_result *result, size_t col);
  * index is out of range. */
 csvdb_value csvdb_result_get(const csvdb_result *result, size_t row, size_t col);
 
+/** The number of tables in `db`'s database directory. */
+size_t csvdb_table_count(csvdb *db);
+
+/** The name of the table at `index` (< csvdb_table_count(db)). Returns
+ * NULL if `index` is out of range. No particular ordering is guaranteed.
+ * The returned pointer is owned by `db`. */
+const char *csvdb_table_name_at(csvdb *db, size_t index);
+
+/** A human-readable, CREATE-TABLE-like description of `table_name`'s
+ * columns (name, type, NOT NULL, PRIMARY KEY, REFERENCES), one per line.
+ * Returns a newly allocated string the caller must free, or NULL (with
+ * csvdb_errmsg(db) set) if the table doesn't exist. */
+char *csvdb_table_schema_string(csvdb *db, const char *table_name);
+
 /** The library's version string, e.g. "0.1.0-dev". */
 const char *csvdb_version(void);
 

@@ -15,7 +15,14 @@ FetchContent_Declare(
     GIT_REPOSITORY https://github.com/DaveGamble/cJSON.git
     GIT_TAG v1.7.19
 )
-FetchContent_MakeAvailable(cjson)
+# EXCLUDE_FROM_ALL so cJSON's own install() rules (which don't respect our
+# install prefix and need admin privileges to /usr/local by default) never
+# run -- we only need its target to link against, not to install it.
+FetchContent_GetProperties(cjson)
+if(NOT cjson_POPULATED)
+    FetchContent_Populate(cjson)
+    add_subdirectory(${cjson_SOURCE_DIR} ${cjson_BINARY_DIR} EXCLUDE_FROM_ALL)
+endif()
 
 # --- vendored third-party libraries ---
 # Kept as separate static-lib targets rather than compiled directly into
@@ -52,9 +59,24 @@ target_compile_options(csvdb_core PRIVATE -Wall -Wextra -Werror)
 # --- csvdb executable (CLI + REPL entry point) ---
 add_executable(csvdb
     src/cli/main.c
+    src/cli/format.c
+    src/repl/repl.c
 )
+target_include_directories(csvdb PRIVATE src/cli src/repl)
+# Same rationale as csvdb_core above: cJSON's own CMakeLists doesn't
+# export its include dir for FetchContent build-tree usage. format.c
+# needs cJSON.h directly for --format json output.
+target_include_directories(csvdb PRIVATE ${cjson_SOURCE_DIR})
 target_link_libraries(csvdb PRIVATE csvdb_core linenoise_vendor)
 target_compile_options(csvdb PRIVATE -Wall -Wextra -Werror)
 
 enable_testing()
 add_subdirectory(tests)
+
+# --- install rules (optional; not a published package, just enough for
+# `cmake --install build` to place the binary, headers, and the static
+# core library somewhere standard) ---
+include(GNUInstallDirs)
+install(TARGETS csvdb RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(TARGETS csvdb_core ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR})
+install(DIRECTORY include/csvdb DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
