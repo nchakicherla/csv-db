@@ -57,9 +57,15 @@ bool catalog_drop_table(Catalog *catalog, const char *table_name,
                          char *errbuf, size_t errlen);
 
 /* Reads/writes a table's rows, wrapped in a shared/exclusive flock() on
- * `<name>.csv.lock`. From here on, all table I/O should go through these
- * rather than calling storage_load/storage_write directly, so locking
- * can't be accidentally bypassed. */
+ * `<name>.csv.lock`. Convenient for simple single-table, single-lock
+ * access. A statement that needs to hold locks across more than one
+ * table (a JOIN, an FK-checking INSERT/UPDATE) must NOT mix these with
+ * catalog_lock_tables below: acquiring a second, independent flock() on
+ * the same file from the same process (a fresh open() gets its own lock
+ * identity) can self-deadlock. Such statements should call
+ * catalog_lock_tables once for everything they need, then read/write via
+ * storage_load/storage_write directly using catalog_table_csv_path --
+ * this is what executor.c does. */
 bool catalog_read_table(Catalog *catalog, const char *table_name, RowSet *out,
                          char *errbuf, size_t errlen);
 bool catalog_write_table(Catalog *catalog, const char *table_name, const RowSet *rows,
@@ -77,5 +83,10 @@ bool catalog_lock_tables(Catalog *catalog, const char **table_names, size_t coun
                           LockMode mode, TableLock *out_locks, size_t *out_locked_count,
                           char *errbuf, size_t errlen);
 void catalog_unlock_tables(TableLock *locks, size_t count);
+
+/* Builds "<dir>/<table_name>.csv" (caller frees). For callers -- namely
+ * executor.c -- that manage their own locking via catalog_lock_tables
+ * and talk to storage_load/storage_write directly. */
+char *catalog_table_csv_path(const Catalog *catalog, const char *table_name);
 
 #endif /* CSVDB_CATALOG_H */

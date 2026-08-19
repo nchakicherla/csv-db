@@ -517,3 +517,7 @@ void catalog_unlock_tables(TableLock *locks, size_t count) {
         lock_release(&locks[i]);
     }
 }
+
+char *catalog_table_csv_path(const Catalog *catalog, const char *table_name) {
+    return build_path(catalog->dir, table_name, ".csv");
+}

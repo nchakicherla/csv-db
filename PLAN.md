@@ -1,12 +1,15 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 4 (SQL lexer & parser) complete. `lexer.{c,h}` tokenizes the full
-grammar with line/column tracking; `ast.h` defines the statement/expression node
-types (CREATE TABLE reuses `Schema` directly); `parser.{c,h}` is a recursive-descent
-parser for all 6 statement types plus OR/AND/NOT/comparison expression precedence,
-rejecting malformed and path-like identifiers by construction (the lexer can't even
-tokenize a `/`). Table-driven tests cover every statement type, structural AST shape,
-and precedence; `ctest` green, also clean under ASan/UBSan. Start at Phase 5.
+**Status:** Phase 5 (query executor) complete. `expr_eval.{c,h}` evaluates WHERE/ON
+expressions (qualified `table.col` resolution, three-valued AND/OR/NOT, LIKE) against
+a multi-table row context; `result.{c,h}` holds SELECT output; `executor.{c,h}` routes
+CREATE/DROP to the catalog, validates INSERT/UPDATE (NOT NULL, PK uniqueness, FK
+existence, INTEGER->REAL promotion) with conservative multi-table locking, does
+load/mutate/atomic-rewrite for UPDATE/DELETE, and runs SELECT as a nested-loop
+INNER/LEFT join with WHERE filter, ORDER BY (NULLs-last-in-DESC), and LIMIT. An
+integration test exercises two FK-linked tables end to end -- CRUD, both join types,
+validation failures, and persistence across a catalog reopen; `ctest` green, also
+clean under ASan/UBSan. Start at Phase 6.
 
 ## Context
 
