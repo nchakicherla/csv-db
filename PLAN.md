@@ -1,15 +1,15 @@
 # csv-db: CSV-backed database with SQL, REPL, and library
 
-**Status:** Phase 5 (query executor) complete. `expr_eval.{c,h}` evaluates WHERE/ON
-expressions (qualified `table.col` resolution, three-valued AND/OR/NOT, LIKE) against
-a multi-table row context; `result.{c,h}` holds SELECT output; `executor.{c,h}` routes
-CREATE/DROP to the catalog, validates INSERT/UPDATE (NOT NULL, PK uniqueness, FK
-existence, INTEGER->REAL promotion) with conservative multi-table locking, does
-load/mutate/atomic-rewrite for UPDATE/DELETE, and runs SELECT as a nested-loop
-INNER/LEFT join with WHERE filter, ORDER BY (NULLs-last-in-DESC), and LIMIT. An
-integration test exercises two FK-linked tables end to end -- CRUD, both join types,
-validation failures, and persistence across a catalog reopen; `ctest` green, also
-clean under ASan/UBSan. Start at Phase 6.
+**Status:** Phase 6 (public library API) complete. `include/csvdb/csvdb.h` is finalized
+with real doc comments: opaque `csvdb`/`csvdb_result` handles, `csvdb_open/close`,
+`csvdb_exec` (one statement at a time, `CSVDB_OK`/`CSVDB_ERROR`/`CSVDB_MISUSE` +
+`csvdb_errmsg`), result iteration (`row_count`/`col_count`/`col_name`/`col_type`/`get`
+returning a small tagged `csvdb_value`), and `csvdb_version`. `src/lib/csvdb.c` wraps
+the internal Catalog/Statement/Result machinery behind it with no internal types
+leaking across the boundary. A new integration test drives full CRUD through the
+public header alone (`#include "csvdb/csvdb.h"` only, no internal headers); `ctest`
+green, also clean under ASan/UBSan. `cli/main.c` is left as Phase 0's smoke test --
+real CLI argument handling is Phase 7's job, not this one. Start at Phase 7.
 
 ## Context
 
